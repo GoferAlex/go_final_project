@@ -1,16 +1,19 @@
 package server
 
 import (
+	"fmt"
 	"net/http"
+
+	"github.com/GoferAlex/go_final_project/pkg/api"
 )
 
-func main() {
+func Run() {
 
-    webDir := "github.com/GoferAlex/go_final_project/web"
-	http.Handle("/", http.FileServer(http.Dir(webDir)))
+	api.Init()
 
+	// run server
 	err := http.ListenAndServe(":7540", nil)
 	if err != nil {
-		panic(err)
+		fmt.Println(err)
 	}
 }
