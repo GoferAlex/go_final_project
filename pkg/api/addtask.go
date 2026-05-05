@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -12,47 +13,66 @@ import (
 )
 
 func addTaskHandler(w http.ResponseWriter, r *http.Request) {
-	// читаем тело запроса
-	var task db.Task
-	var wrong db.Wrong
+	go func() {
 
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		wrong.Error = err.Error()
-		writeJson(w, wrong)
-		return
-	}
-	defer r.Body.Close()
+		// читаем тело запроса
+		var task db.Task
+		var wrong db.Wrong
 
-	// десериализуем JSON в Task
-	if err := json.Unmarshal(body, &task); err != nil {
-		wrong.Error = err.Error()
-		writeJson(w, wrong)
-		return
-	}
+		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+		defer cancel()
 
-	if task.Title == "" {
-		err := errors.New("empty Title")
-		wrong.Error = err.Error()
-		writeJson(w, wrong)
-		return
-	}
+		tasksMu.Lock()
+		defer tasksMu.Unlock()
 
-	if err := checkDate(&task); err != nil {
-		wrong.Error = err.Error()
-		writeJson(w, wrong)
-		return
-	}
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			default:
+				body, err := io.ReadAll(r.Body)
+				if err != nil {
+					wrong.Error = err.Error()
+					writeJson(w, wrong)
+					return
+				}
+				defer r.Body.Close()
 
-	id, err := db.AddTask(&task)
-	if err != nil {
-		wrong.Error = err.Error()
-		writeJson(w, wrong)
-		return
-	}
+				// десериализуем JSON в Task
+				if err := json.Unmarshal(body, &task); err != nil {
+					wrong.Error = err.Error()
+					writeJson(w, wrong)
+					return
+				}
 
-	task.ID = strconv.Itoa(int(id))
-	writeJson(w, task)
+				if task.Title == "" {
+					err := errors.New("empty Title")
+					wrong.Error = err.Error()
+					writeJson(w, wrong)
+					return
+				}
+
+				if err := checkDate(&task); err != nil {
+					wrong.Error = err.Error()
+					writeJson(w, wrong)
+					return
+				}
+
+				id, err := db.AddTask(ctx, &task)
+				if err != nil {
+					wrong.Error = err.Error()
+					writeJson(w, wrong)
+					return
+				}
+
+				task.ID = strconv.Itoa(int(id))
+
+				writeJson(w, task)
+
+				return
+			}
+		}
+	}()
 }
 
 func checkDate(task *db.Task) error {
