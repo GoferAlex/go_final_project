@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -13,101 +12,81 @@ import (
 )
 
 func addTaskHandler(w http.ResponseWriter, r *http.Request) {
-	go func() {
 
-		// читаем тело запроса
-		var task db.Task
-		var wrong db.Wrong
+	var task db.Task
+	var wrong db.Wrong
 
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
+	// читаем тело запроса
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		wrong.Error = err.Error()
+		writeJson(w, wrong)
+		return
+	}
+	defer r.Body.Close()
 
-		tasksMu.Lock()
-		defer tasksMu.Unlock()
+	// десериализуем JSON в Task
+	if err := json.Unmarshal(body, &task); err != nil {
+		wrong.Error = err.Error()
+		writeJson(w, wrong)
+		return
+	}
 
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				body, err := io.ReadAll(r.Body)
-				if err != nil {
-					wrong.Error = err.Error()
-					writeJson(w, wrong)
-					return
-				}
-				defer r.Body.Close()
+	if task.Title == "" {
+		err := errors.New("empty Title")
+		wrong.Error = err.Error()
+		writeJson(w, wrong)
+		return
+	}
 
-				// десериализуем JSON в Task
-				if err := json.Unmarshal(body, &task); err != nil {
-					wrong.Error = err.Error()
-					writeJson(w, wrong)
-					return
-				}
+	if err := checkDate(&task); err != nil {
+		wrong.Error = err.Error()
+		writeJson(w, wrong)
+		return
+	}
 
-				if task.Title == "" {
-					err := errors.New("empty Title")
-					wrong.Error = err.Error()
-					writeJson(w, wrong)
-					return
-				}
+	id, err := db.AddTask(&task)
+	if err != nil {
+		wrong.Error = err.Error()
+		writeJson(w, wrong)
+		return
+	}
 
-				if err := checkDate(&task); err != nil {
-					wrong.Error = err.Error()
-					writeJson(w, wrong)
-					return
-				}
-
-				id, err := db.AddTask(ctx, &task)
-				if err != nil {
-					wrong.Error = err.Error()
-					writeJson(w, wrong)
-					return
-				}
-
-				task.ID = strconv.Itoa(int(id))
-
-				writeJson(w, task)
-
-				return
-			}
-		}
-	}()
+	task.ID = strconv.Itoa(int(id))
+	writeJson(w, task)
 }
 
 func checkDate(task *db.Task) error {
 	now := time.Now().Format(api)
-	stringNow, err := time.Parse(api, now)
+	timeNow, err := time.Parse(api, now)
 	if err != nil {
 		return err
 	}
 
 	var (
 		date time.Time
+		next string
 	)
 
 	if task.Date == "" {
 		task.Date = now
 	} else {
-		date, err = time.Parse("20060102", task.Date)
+		date, err = time.Parse(api, task.Date)
 		if err != nil {
 			return err
 		}
-	}
-
-	next, err := NextDate(stringNow, task.Date, task.Repeat)
-	if err != nil {
-		return err
-	}
-	// если сегодня (now) больше task.Date (t)
-
-	if afterNow(stringNow, date) {
-		if len(task.Repeat) == 0 {
-			// если правила повторения нет, то берём сегодняшнее число
-			task.Date = now
-		} else {
-			// в противном случае, берём вычисленную ранее следующую дату
-			task.Date = next
+		if afterNow(timeNow, date) {
+			if len(task.Repeat) == 0 {
+				// если правила повторения нет, то берём сегодняшнее число
+				task.Date = now
+			} else {
+				// в противном случае, берём вычисленную ранее следующую дату
+				next, err = NextDate(timeNow, task.Date, task.Repeat)
+				if err != nil {
+					return err
+				}
+				task.Date = next
+			}
 		}
 	}
 	return nil

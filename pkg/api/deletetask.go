@@ -1,50 +1,31 @@
 package api
 
 import (
-	"context"
+	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/GoferAlex/go_final_project/pkg/db"
 )
 
 func deleteTaskHandler(w http.ResponseWriter, r *http.Request) {
-	go func() {
+	fmt.Println("dTH go")
 
-		ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-		defer cancel()
+	wrong := db.Wrong{
+		Error: "Error delete",
+	}
 
-		wrong := db.Wrong{
-			Error: "Error delete",
-		}
+	id := r.URL.Query().Get("id")
+	_, err := db.GetTask(id)
+	if err != nil {
+		writeJson(w, wrong)
+		return
+	}
 
-		tasksMu.Lock()
-		defer tasksMu.Unlock()
+	err = db.DeleteTask(id)
+	if err != nil {
+		writeJson(w, wrong)
+		return
+	}
 
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			default:
-				id := r.URL.Query().Get("id")
-				_, err := db.GetTask(ctx, id)
-
-				if err != nil {
-					writeJson(w, wrong)
-					return
-				}
-
-				err = db.DeleteTask(ctx, id)
-
-				if err != nil {
-					writeJson(w, wrong)
-					return
-				}
-
-				writeJson(w, empty)
-
-				return
-			}
-		}
-	}()
+	writeJson(w, empty)
 }

@@ -1,7 +1,6 @@
 package db
 
 import (
-	"context"
 	"database/sql"
 	"fmt"
 
@@ -20,12 +19,12 @@ type Wrong struct {
 	Error string `json:"error"`
 }
 
-func AddTask(ctx context.Context, task *Task) (int64, error) {
+func AddTask(task *Task) (int64, error) {
+
 	var id int64
 
-	query := `INSERT INTO scheduler (date, title, comment, repeat)` +
-		`VALUES (:date, :title, :comment, :repeat)`
-	res, err := Datbase.ExecContext(ctx, query,
+	query := `INSERT INTO scheduler (date, title, comment, repeat) VALUES (:date, :title, :comment, :repeat)`
+	res, err := Datbase.Exec(query,
 		sql.Named("date", task.Date),
 		sql.Named("title", task.Title),
 		sql.Named("comment", task.Comment),
@@ -40,9 +39,10 @@ func AddTask(ctx context.Context, task *Task) (int64, error) {
 	return r, nil
 }
 
-func Tasks(ctx context.Context, limit int) ([]*Task, error) {
+func Tasks(limit int) ([]*Task, error) {
+
 	tasks := []*Task{}
-	rows, err := Datbase.QueryContext(ctx, "SELECT id, date, title, comment, repeat FROM scheduler ORDER BY date")
+	rows, err := Datbase.Query("SELECT id, date, title, comment, repeat FROM scheduler ORDER BY date")
 	if err != nil {
 		return tasks, err
 	}
@@ -65,11 +65,11 @@ func Tasks(ctx context.Context, limit int) ([]*Task, error) {
 	return tasks, nil
 }
 
-func GetTask(ctx context.Context, id string) (*Task, error) {
+func GetTask(id string) (*Task, error) {
 
 	task := Task{}
 
-	err := Datbase.QueryRowContext(ctx, "SELECT id, date, title, comment, repeat FROM scheduler WHERE id = :id", sql.Named("id", id)).Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
+	err := Datbase.QueryRow("SELECT id, date, title, comment, repeat FROM scheduler WHERE id = :id", sql.Named("id", id)).Scan(&task.ID, &task.Date, &task.Title, &task.Comment, &task.Repeat)
 	if err != nil {
 		return &task, err
 	}
@@ -77,10 +77,10 @@ func GetTask(ctx context.Context, id string) (*Task, error) {
 	return &task, nil
 }
 
-func UpdateTask(ctx context.Context, task *Task) error {
-	query := `UPDATE scheduler SET date = :date, title = :title, comment = :comment, repeat = :repeat` +
-		`WHERE id = :id`
-	res, err := Datbase.ExecContext(ctx, query,
+func UpdateTask(task *Task) error {
+
+	query := `UPDATE scheduler SET date = :date, title = :title, comment = :comment, repeat = :repeat WHERE id = :id`
+	res, err := Datbase.Exec(query,
 		sql.Named("date", task.Date),
 		sql.Named("title", task.Title),
 		sql.Named("comment", task.Comment),
@@ -100,9 +100,9 @@ func UpdateTask(ctx context.Context, task *Task) error {
 	return nil
 }
 
-func DeleteTask(ctx context.Context, id string) error {
+func DeleteTask(id string) error {
 
-	_, err := Datbase.ExecContext(ctx, "DELETE FROM scheduler WHERE id = :id", sql.Named("id", id))
+	_, err := Datbase.Exec("DELETE FROM scheduler WHERE id = :id", sql.Named("id", id))
 	if err != nil {
 		return err
 	}
@@ -110,8 +110,9 @@ func DeleteTask(ctx context.Context, id string) error {
 	return nil
 }
 
-func UpdateDate(ctx context.Context, next, id string) error {
-	res, err := Datbase.ExecContext(ctx, "UPDATE scheduler SET date = :date WHERE id = :id",
+func UpdateDate(next, id string) error {
+
+	res, err := Datbase.Exec("UPDATE scheduler SET date = :date WHERE id = :id",
 		sql.Named("date", next),
 		sql.Named("id", id))
 	if err != nil {

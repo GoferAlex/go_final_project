@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"net/http"
 	"time"
 
@@ -18,50 +17,39 @@ var (
 )
 
 func taskDoneHandler(w http.ResponseWriter, r *http.Request) {
-	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
-	defer cancel()
 
 	wrong := db.Wrong{
 		Error: "Error task done",
 	}
 
-	for {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			id := r.URL.Query().Get("id")
-			task, err := db.GetTask(ctx, id)
+	id := r.URL.Query().Get("id")
 
-			if err != nil {
-				writeJson(w, wrong)
-				return
-			}
+	task, err := db.GetTask(id)
+	if err != nil {
+		writeJson(w, wrong)
+		return
+	}
 
-			if task.Repeat == "" {
-				err = db.DeleteTask(ctx, id)
-				if err != nil {
-					writeJson(w, wrong)
-					return
-				}
-				writeJson(w, empty)
-				return
-			}
-			nextDate, err = NextDate(time.Now(), task.Date, task.Repeat)
-			if err != nil {
-				writeJson(w, wrong)
-				return
-			}
-
-			err = db.UpdateDate(ctx, nextDate, id)
-			if err != nil {
-				writeJson(w, wrong)
-				return
-			}
-
-			writeJson(w, empty)
-
+	if task.Repeat == "" {
+		err = db.DeleteTask(id)
+		if err != nil {
+			writeJson(w, wrong)
 			return
 		}
+		writeJson(w, empty)
+		return
 	}
+	nextDate, err = NextDate(time.Now(), task.Date, task.Repeat)
+	if err != nil {
+		writeJson(w, wrong)
+		return
+	}
+
+	err = db.UpdateDate(nextDate, id)
+	if err != nil {
+		writeJson(w, wrong)
+		return
+	}
+
+	writeJson(w, empty)
 }

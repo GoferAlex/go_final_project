@@ -10,16 +10,18 @@ import (
 
 const api = "20060102"
 
-func afterNow(now, date time.Time) bool {
+func afterNow(date, now time.Time) bool {
 	if date.After(now) {
 		return true
+	} else {
+		return false
 	}
-	return false
 }
 
 var ErrInvalidFormat = errors.New("invalid format of repeat")
 
 func NextDate(now time.Time, dstart string, repeat string) (string, error) {
+
 	date, err := time.Parse(api, dstart)
 	if err != nil {
 		return "", err
@@ -28,10 +30,20 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 	rep := strings.Split(repeat, " ")
 
 	d := 0
-	if len(rep) == 1 && rep[0] != "y" {
-		return "", ErrInvalidFormat
-	}
-	if len(rep) == 2 {
+	switch len(rep) {
+
+	case 1:
+		if rep[0] != "y" {
+			return "", ErrInvalidFormat
+		} else {
+			for {
+				date = date.AddDate(1, 0, 0)
+				if afterNow(date, now) {
+					break
+				}
+			}
+		}
+	case 2:
 		if rep[0] != "d" {
 			return "", ErrInvalidFormat
 		} else {
@@ -42,36 +54,29 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 			if d > 400 {
 				return "", ErrInvalidFormat
 			}
+			for {
+				date = date.AddDate(0, 0, d)
+				if afterNow(date, now) {
+					break
+				}
+			}
 		}
-	}
-	if len(rep) > 2 {
+
+	default:
 		return "", ErrInvalidFormat
 	}
 
-	if rep[0] == "y" {
-		for {
-			date = date.AddDate(1, 0, 0)
-			if afterNow(date, now) {
-				break
-			}
-		}
-	} else {
-		for {
-			date = date.AddDate(0, 0, d)
-			if afterNow(date, now) {
-				break
-			}
-		}
-	}
 	string := date.Format(api)
 
 	return string, nil
 }
 
 func nextDayHandler(res http.ResponseWriter, req *http.Request) {
+
 	now := req.FormValue("now")
 	err := errors.New("")
 	t := time.Now()
+
 	if now != "" {
 		t, err = time.Parse(api, now)
 		if err != nil {
@@ -79,7 +84,9 @@ func nextDayHandler(res http.ResponseWriter, req *http.Request) {
 			return
 		}
 	}
+
 	date := req.FormValue("date")
+
 	repeat := req.FormValue("repeat")
 	answer, err := NextDate(t, date, repeat)
 	if err != nil {
