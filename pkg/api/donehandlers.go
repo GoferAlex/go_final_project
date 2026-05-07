@@ -1,6 +1,7 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
 	"time"
 
@@ -14,26 +15,31 @@ type Empty struct{}
 var (
 	empty    Empty
 	nextDate string
+	wrong    respErr
 )
 
 func taskDoneHandler(w http.ResponseWriter, r *http.Request) {
 
-	wrong := db.Wrong{
-		Error: "Error task done",
+	if r.Method != http.MethodPost {
+		w.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		w.WriteHeader(http.StatusMethodNotAllowed)
+		err := fmt.Errorf("Request is not" + http.MethodPost)
+		writeJson(w, err)
+		return
 	}
 
 	id := r.URL.Query().Get("id")
 
 	task, err := db.GetTask(id)
 	if err != nil {
-		writeJson(w, wrong)
+		writeJson(w, err)
 		return
 	}
 
 	if task.Repeat == "" {
 		err = db.DeleteTask(id)
 		if err != nil {
-			writeJson(w, wrong)
+			writeJson(w, err)
 			return
 		}
 		writeJson(w, empty)
@@ -41,13 +47,13 @@ func taskDoneHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	nextDate, err = NextDate(time.Now(), task.Date, task.Repeat)
 	if err != nil {
-		writeJson(w, wrong)
+		writeJson(w, err)
 		return
 	}
 
 	err = db.UpdateDate(nextDate, id)
 	if err != nil {
-		writeJson(w, wrong)
+		writeJson(w, err)
 		return
 	}
 

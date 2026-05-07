@@ -6,17 +6,17 @@ import (
 	"github.com/GoferAlex/go_final_project/pkg/db"
 )
 
+const limit = 50
+
 type TasksResp struct {
 	Tasks []*db.Task `json:"tasks"`
 }
 
 func tasksHandler(w http.ResponseWriter, r *http.Request) {
-	var wrong db.Wrong
-
-	tasks, err := db.Tasks(50) // в параметре максимальное количество записей
+	tasks, err := db.Tasks(limit) // в параметре максимальное количество записей
 	if err != nil {
 		wrong.Error = err.Error()
-		writeJson(w, wrong)
+		writeJson(w, err)
 		return
 	}
 

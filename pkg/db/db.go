@@ -33,6 +33,7 @@ func Init(dbFile string) error {
 	if err != nil {
 		return err
 	}
+	defer Datbase.Close()
 
 	if install {
 		_, err = Datbase.Exec(shema)

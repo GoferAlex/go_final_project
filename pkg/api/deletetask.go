@@ -10,20 +10,16 @@ import (
 func deleteTaskHandler(w http.ResponseWriter, r *http.Request) {
 	fmt.Println("dTH go")
 
-	wrong := db.Wrong{
-		Error: "Error delete",
-	}
-
 	id := r.URL.Query().Get("id")
 	_, err := db.GetTask(id)
 	if err != nil {
-		writeJson(w, wrong)
+		writeJson(w, err)
 		return
 	}
 
 	err = db.DeleteTask(id)
 	if err != nil {
-		writeJson(w, wrong)
+		writeJson(w, err)
 		return
 	}
 

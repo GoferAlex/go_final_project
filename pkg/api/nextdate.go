@@ -2,13 +2,14 @@ package api
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"strconv"
 	"strings"
 	"time"
 )
 
-const api = "20060102"
+const formatDate = "20060102"
 
 func afterNow(date, now time.Time) bool {
 	if date.After(now) {
@@ -22,7 +23,7 @@ var ErrInvalidFormat = errors.New("invalid format of repeat")
 
 func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 
-	date, err := time.Parse(api, dstart)
+	date, err := time.Parse(formatDate, dstart)
 	if err != nil {
 		return "", err
 	}
@@ -66,19 +67,28 @@ func NextDate(now time.Time, dstart string, repeat string) (string, error) {
 		return "", ErrInvalidFormat
 	}
 
-	string := date.Format(api)
+	string := date.Format(formatDate)
 
 	return string, nil
 }
 
 func nextDayHandler(res http.ResponseWriter, req *http.Request) {
 
+	if req.Method != http.MethodGet {
+		res.Header().Set("Content-Type", "application/json; charset=UTF-8")
+		res.WriteHeader(http.StatusMethodNotAllowed)
+		err := fmt.Errorf("Request is not" + http.MethodGet)
+		wrong.Error = err.Error()
+		writeJson(res, wrong)
+		return
+	}
+
 	now := req.FormValue("now")
 	err := errors.New("")
 	t := time.Now()
 
 	if now != "" {
-		t, err = time.Parse(api, now)
+		t, err = time.Parse(formatDate, now)
 		if err != nil {
 			http.Error(res, err.Error(), http.StatusBadRequest)
 			return

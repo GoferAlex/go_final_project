@@ -15,10 +15,6 @@ type Task struct {
 	Repeat  string `json:"repeat"`
 }
 
-type Wrong struct {
-	Error string `json:"error"`
-}
-
 func AddTask(task *Task) (int64, error) {
 
 	var id int64
@@ -44,7 +40,7 @@ func Tasks(limit int) ([]*Task, error) {
 	tasks := []*Task{}
 	rows, err := Datbase.Query("SELECT id, date, title, comment, repeat FROM scheduler ORDER BY date")
 	if err != nil {
-		return tasks, err
+		return nil, err
 	}
 	defer rows.Close()
 

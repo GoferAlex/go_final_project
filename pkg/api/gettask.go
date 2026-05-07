@@ -8,16 +8,12 @@ import (
 
 func getTaskHandler(w http.ResponseWriter, r *http.Request) {
 
-	wrong := db.Wrong{
-		Error: "задача не найдена-с",
-	}
-
 	id := r.URL.Query().Get("id")
 
 	task, err := db.GetTask(id)
 
 	if err != nil {
-		writeJson(w, wrong)
+		writeJson(w, err)
 	} else {
 		writeJson(w, task)
 	}

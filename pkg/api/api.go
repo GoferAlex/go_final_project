@@ -4,6 +4,10 @@ import (
 	"net/http"
 )
 
+type respErr struct {
+	Error string `json:"error"`
+}
+
 func Init() {
 	webDir := "./web"
 
