@@ -31,9 +31,9 @@ func Init(dbFile string) error {
 	/*db*/
 	Datbase, err = sql.Open("sqlite", dbFile)
 	if err != nil {
+		Datbase.Close()
 		return err
 	}
-	defer Datbase.Close()
 
 	if install {
 		_, err = Datbase.Exec(shema)

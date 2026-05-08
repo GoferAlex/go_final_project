@@ -13,6 +13,7 @@ func main() {
 	if err != nil {
 		fmt.Println("Run database error", err)
 	}
+	defer db.Datbase.Close()
 
 	server.Run()
 }
